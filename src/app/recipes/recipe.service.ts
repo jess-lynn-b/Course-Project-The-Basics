@@ -1,10 +1,9 @@
-import { EventEmitter, Injectable } from "@angular/core";
+import {  Injectable } from "@angular/core";
 import { recipe } from "./recipe.model";
 import { Ingredient } from "../shared/ingredients.model";
 import { ShoppingListService } from "../shopping-list/shopping.list.service";
 @Injectable()
 export class RecipeService{
-  recipeSelected = new EventEmitter<recipe>();
 
   private recipes: recipe[] = [
     new recipe ('Hocus Pocus book brownies',
