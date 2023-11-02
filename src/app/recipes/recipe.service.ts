@@ -27,8 +27,13 @@ export class RecipeService{
       new Ingredient ('graham crackers', 8)
     ])
   ];
+  private recipe: recipe[] = [];
   constructor (private slService: ShoppingListService){}
 
+  setRecipes(recipes: recipe[]) {
+    this.recipes = recipes;
+    this.recipesChanged.next(this.recipes.slice());
+  }
   getRecipes (){
     return this.recipes.slice();
   }
