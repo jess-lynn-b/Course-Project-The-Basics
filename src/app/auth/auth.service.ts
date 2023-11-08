@@ -1,14 +1,25 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { BehaviorSubject, Subject, catchError, tap } from "rxjs";
+import { BehaviorSubject, Observable, Subject, catchError, tap } from "rxjs";
 import { throwError } from "rxjs";
 import { User } from "./user.model";
 import { Router } from "@angular/router";
+import { environment } from "../enviroments/enviroment.development";
 
-export interface AuthResponseData{
+//* Constants
+const FIREBASE_WEB_API_KEY = environment.firebaseApiKey;
+const FIREBASE_SIGN_UP_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_WEB_API_KEY}`;
+
+const FIREBASE_SIGN_IN_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_WEB_API_KEY}`;
+
+export interface IAuthReqData {
+  password: string;
+  email: string;
+  returnSecureToken?: boolean;
+}
+export interface IAuthResData {
   kind: string;
   idToken: string;
-  password: string;
   email: string;
   refreshToken: string;
   expiresIn: string;
@@ -17,24 +28,20 @@ export interface AuthResponseData{
 }
 
 @Injectable({providedIn: 'root'})
+
 export class AuthService {
-  user = new BehaviorSubject<User>(null);
+  currUser = new BehaviorSubject<User>(null);
   private tokenExpirationTimer: any;
 
-  API_KEY = 'AIzaSyCvWJJjVs_KeTh6b8Xt_VNen2lSvLscsbQ'
   constructor(private http: HttpClient,
     private router: Router){}
 
-  signup(email: string, password: string){
-    console.log(email,password);
-    return this.http.post<AuthResponseData>(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${this.API_KEY}`,
-    {
-      email: email,
-      password: password,
-      returnSecureToken: true
-    }
-   )
+  signUpWithEmailPassword(authData: IAuthReqData){
+    if (!authData.email || !authData.password) return;
+    const authRes = this.http.post<IAuthResData>(FIREBASE_SIGN_UP_URL, {
+      ...authData,
+      returnSecureToken: true,
+    })
     .pipe(
       catchError(this.handleError),
       tap(resData => {
@@ -47,15 +54,13 @@ export class AuthService {
        })
     );
   }
-  login(email: string, password: string) {
-    return this.http.post<AuthResponseData>(
-        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${this.API_KEY}`,
-       {
-        email: email,
-        password: password,
-        returnSecureToken: true
-      }
-    )
+  loginWithEmailPassword(authData: IAuthReqData){
+    if (!authData.email || !authData.password) return;
+    const authRes = this.http.post
+    <IAuthResData>(FIREBASE_SIGN_IN_URL, {
+      ...authData,
+      returnSecureToken: true,
+    })
       .pipe(
         catchError(this.handleError),
         tap(resData => {
@@ -86,14 +91,14 @@ export class AuthService {
       new Date(userData._tokenExpirationDate)
       );
       if (loadedUser.token) {
-        this.user.next(loadedUser);
+        this.currUser.next(loadedUser);
         const expirationDuration = new Date(User.Data_tokenExpirationDate).getTime() - new Date(). getTime();
         this.autoLogout(expirationDuration);
       }
   }
 
   logout(){
-    this.user.next(null);
+    this.currUser.next(null);
     this.router.navigate(['/auth']);
     localStorage.removeItem('userData');
     if (this.tokenExpirationTimer) {
@@ -115,7 +120,7 @@ export class AuthService {
     expiresIn: number,
     ) {
     const expirationDate = new Date(
-      new Date().getTime()+ expiresIn * 1000
+      new Date().getTime() +expiresIn * 1000
     );
     const user = new User(
       email,
@@ -123,7 +128,7 @@ export class AuthService {
       token,
       expirationDate
      );
-     this.user.next(user);
+     this.currUser.next(user);
      this.autoLogin();
      localStorage.setItem('userData', JSON.stringify(user));
   }
